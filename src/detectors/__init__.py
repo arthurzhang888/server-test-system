@@ -11,5 +11,6 @@ from .raid import RAIDDetector
 from .sensor import SensorDetector
 from .storage import StorageDetector
 from .tpm import TPMDetector
+from .usb import USBDetector
 
-__all__ = ["BaseDetector", "DetectorMode", "BMCDetector", "BIOSDetector", "CPUDetector", "GPUDetector", "MemoryDetector", "NetworkDetector", "PCIeDetector", "PSUDetector", "RAIDDetector", "SensorDetector", "StorageDetector", "TPMDetector"]
+__all__ = ["BaseDetector", "DetectorMode", "BMCDetector", "BIOSDetector", "CPUDetector", "GPUDetector", "MemoryDetector", "NetworkDetector", "PCIeDetector", "PSUDetector", "RAIDDetector", "SensorDetector", "StorageDetector", "TPMDetector", "USBDetector"]
