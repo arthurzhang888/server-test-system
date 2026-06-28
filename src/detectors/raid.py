@@ -164,8 +164,97 @@ class RAIDDetector(BaseDetector):
 
     def _get_storcli_info(self, controller_index: int) -> Dict[str, Any]:
         """Get RAID info using StorCLI (LSI/Broadcom)."""
-        # Placeholder - will be implemented in Task 2
-        return {}
+        info = {
+            "arrays": [],
+            "physical_drives": [],
+            "battery": {"present": False}
+        }
+
+        try:
+            # Check if storcli exists
+            result = subprocess.run(
+                ["which", "storcli64"],
+                capture_output=True,
+                timeout=2
+            )
+            if result.returncode != 0:
+                return info
+
+            # Get controller info
+            ctrl_result = subprocess.run(
+                ["storcli64", f"/c{controller_index}", "show"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if ctrl_result.returncode == 0:
+                # Parse basic controller info
+                for line in ctrl_result.stdout.split("\n"):
+                    if "Firmware Version" in line:
+                        parts = line.split("=")
+                        if len(parts) > 1:
+                            info["firmware"] = parts[1].strip()
+
+            # Get virtual drives (arrays)
+            vd_result = subprocess.run(
+                ["storcli64", f"/c{controller_index}", "/vall", "show"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if vd_result.returncode == 0:
+                info["arrays"] = self._parse_storcli_vd_output(vd_result.stdout)
+
+            # Get physical drives
+            pd_result = subprocess.run(
+                ["storcli64", f"/c{controller_index}", "/eall", "/sall", "show"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if pd_result.returncode == 0:
+                info["physical_drives"] = self._parse_storcli_pd_output(pd_result.stdout)
+
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+        return info
+
+    def _parse_storcli_vd_output(self, output: str) -> List[Dict[str, Any]]:
+        """Parse StorCLI virtual drive output."""
+        arrays = []
+        # Simplified parsing - real implementation would be more robust
+        for line in output.split("\n"):
+            if "RAID" in line and "Optimal" in line:
+                parts = line.split()
+                if len(parts) >= 4:
+                    arrays.append({
+                        "id": len(arrays),
+                        "raid_level": parts[1] if len(parts) > 1 else "Unknown",
+                        "status": "Optimal",
+                        "size_gb": 0,  # Would need size parsing
+                        "drives": 0
+                    })
+        return arrays
+
+    def _parse_storcli_pd_output(self, output: str) -> List[Dict[str, Any]]:
+        """Parse StorCLI physical drive output."""
+        drives = []
+        for line in output.split("\n"):
+            if "HDD" in line or "SSD" in line:
+                parts = line.split()
+                if len(parts) >= 3:
+                    drives.append({
+                        "enclosure": 0,
+                        "slot": len(drives),
+                        "model": parts[0] if parts else "Unknown",
+                        "size_gb": 0,
+                        "status": "Online"
+                    })
+        return drives
 
     def _get_arcconf_info(self, controller_index: int) -> Dict[str, Any]:
         """Get RAID info using arcconf (Adaptec)."""
