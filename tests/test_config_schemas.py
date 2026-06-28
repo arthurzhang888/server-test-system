@@ -37,3 +37,24 @@ def test_global_config_minimal():
     )
     assert config.server_type == ServerType.GENERIC
     assert config.detector_mode == DetectorMode.REAL  # default
+
+
+def test_output_config_defaults():
+    from src.config.schemas import OutputConfig
+    config = OutputConfig()
+    assert config.formats == ["json"]
+    assert config.upload_to_ems is False
+    assert config.ems_endpoint is None
+
+
+def test_output_config_custom():
+    from src.config.schemas import OutputConfig
+    config = OutputConfig(
+        formats=["json", "html"],
+        upload_to_ems=True,
+        ems_endpoint="http://example.com/api"
+    )
+    assert config.formats == ["json", "html"]
+    assert config.upload_to_ems is True
+    assert config.ems_endpoint == "http://example.com/api"
+

@@ -1,3 +1,3 @@
-from .schemas import DetectorMode, ServerType, TestConfig, GlobalConfig
+from .schemas import DetectorMode, ServerType, TestConfig, GlobalConfig, OutputConfig
 
-__all__ = ["DetectorMode", "ServerType", "TestConfig", "GlobalConfig"]
+__all__ = ["DetectorMode", "ServerType", "TestConfig", "GlobalConfig", "OutputConfig"]
