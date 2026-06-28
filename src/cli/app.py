@@ -132,7 +132,8 @@ def run(config, output, mock, parallel, workers, stress, cpu_stress_duration, gp
 @cli.command()
 def interactive():
     """Run tests in interactive wizard mode."""
-    click.echo("Interactive mode - TODO: implement wizard")
+    from src.cli.interactive import run_interactive
+    run_interactive()
 
 
 if __name__ == '__main__':

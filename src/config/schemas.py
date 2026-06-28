@@ -15,10 +15,27 @@ class ServerType(str, Enum):
     AI_SERVER = "ai_server"
 
 
+class EMSAdapterConfig(BaseModel):
+    """EMS adapter configuration."""
+    type: str = Field(default="http", description="Adapter type: http, webhook")
+    endpoint: Optional[str] = None
+    webhook_url: Optional[str] = None
+    auth_type: str = Field(default="api_key", description="Auth: api_key, bearer_token, basic_auth")
+    api_key: Optional[str] = None
+    bearer_token: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    timeout_seconds: int = 30
+    max_retries: int = 3
+    retry_delay_seconds: int = 5
+    secret: Optional[str] = None  # For webhook signature
+
+
 class OutputConfig(BaseModel):
     formats: List[str] = Field(default=["json"], description="Output formats: json, html, csv")
     upload_to_ems: bool = Field(default=False)
     ems_endpoint: Optional[str] = None
+    ems_adapter: EMSAdapterConfig = Field(default_factory=EMSAdapterConfig)
 
 
 class TestConfig(BaseModel):
