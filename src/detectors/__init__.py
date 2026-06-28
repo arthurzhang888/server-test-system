@@ -19,5 +19,6 @@ from .storage import StorageDetector
 from .tpm import TPMDetector
 from .usb import USBDetector
 from .chassis import ChassisDetector
+from .dpu import DPUDetector
 
-__all__ = ["BaseDetector", "DetectorMode", "BMCDetector", "BIOSDetector", "ChassisDetector", "CPUDetector", "DIMMDetector", "FPGADetector", "GPUDetector", "IBDetector", "MemoryDetector", "NetworkDetector", "NVMeHealthDetector", "PCIeDetector", "PSUDetector", "RAIDDetector", "SecurityDetector", "SensorDetector", "SerialDetector", "StorageDetector", "TPMDetector", "USBDetector"]
+__all__ = ["BaseDetector", "DetectorMode", "BMCDetector", "BIOSDetector", "ChassisDetector", "CPUDetector", "DIMMDetector", "DPUDetector", "FPGADetector", "GPUDetector", "IBDetector", "MemoryDetector", "NetworkDetector", "NVMeHealthDetector", "PCIeDetector", "PSUDetector", "RAIDDetector", "SecurityDetector", "SensorDetector", "SerialDetector", "StorageDetector", "TPMDetector", "USBDetector"]
