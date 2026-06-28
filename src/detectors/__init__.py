@@ -7,6 +7,7 @@ from .network import NetworkDetector
 from .pcie import PCIeDetector
 from .psu import PSUDetector
 from .raid import RAIDDetector
+from .sensor import SensorDetector
 from .storage import StorageDetector
 
-__all__ = ["BaseDetector", "DetectorMode", "BMCDetector", "CPUDetector", "GPUDetector", "MemoryDetector", "NetworkDetector", "PCIeDetector", "PSUDetector", "RAIDDetector", "StorageDetector"]
+__all__ = ["BaseDetector", "DetectorMode", "BMCDetector", "CPUDetector", "GPUDetector", "MemoryDetector", "NetworkDetector", "PCIeDetector", "PSUDetector", "RAIDDetector", "SensorDetector", "StorageDetector"]
