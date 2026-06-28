@@ -1,0 +1,106 @@
+# Storage Server Configuration
+# Optimized for high-capacity storage servers with multiple disk types
+
+server_type: storage
+mode: auto
+detector_mode: real
+
+tests:
+  - name: cpu_test
+    enabled: true
+    params:
+      stress_duration: 180
+      threads: auto
+
+  - name: memory_test
+    enabled: true
+    params:
+      capacity_check: true
+      ecc_check: true
+      stress_duration: 180
+
+  - name: storage_test
+    enabled: true
+    params:
+      test_nvme: true
+      test_sas: true
+      test_sata: true
+      performance_test: true
+      raid_check: true
+
+  - name: network_test
+    enabled: true
+    params:
+      test_ports: auto
+      throughput_test: false
+
+  - name: bmc_test
+    enabled: true
+    params:
+      ipmi_check: true
+      sensor_check: true
+
+  - name: pcie_test
+    enabled: true
+    params:
+      hba_check: true
+      raid_card_check: true
+
+# CPU Stress Test Configuration
+cpu_stress:
+  enabled: true
+  duration_seconds: 300
+  sample_interval_seconds: 5
+  threads: null
+  thresholds:
+    temperature:
+      min_value: 0
+      max_value: 85
+      warning_pct: 0.82
+      critical_pct: 0.94
+    utilization:
+      min_value: 80
+      max_value: 100
+
+# GPU Stress Test - Disabled for storage servers
+gpu_stress:
+  enabled: false
+  duration_seconds: 0
+
+# NVMe Stress Test
+nvme_stress:
+  enabled: true
+  duration_seconds: 600
+  sample_interval_seconds: 10
+  devices: []
+  test_file_size_gb: 50
+  write_ratio: 0.5
+  thresholds:
+    temperature:
+      min_value: 0
+      max_value: 70
+      warning_pct: 0.86
+      critical_pct: 0.93
+    health_percent:
+      min_value: 95
+      max_value: 100
+    spare_percent:
+      min_value: 10
+      max_value: 100
+    media_errors:
+      min_value: 0
+      max_value: 0
+
+# Storage-specific settings
+storage:
+  min_nvme_drives: 2
+  min_sas_drives: 4
+  raid_controllers:
+    - LSI/Broadcom
+    - Adaptec
+    - HP Smart Array
+
+output:
+  formats: [json, html]
+  upload_to_ems: true
+  ems_endpoint: "http://ems-server:8080/api/v1/results"

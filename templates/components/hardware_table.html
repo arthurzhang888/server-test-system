@@ -1,0 +1,45 @@
+<section class="hardware-section">
+    <h2>Hardware Details</h2>
+
+    {% for result in results %}
+    <div class="hardware-card status-{{ result.status }}">
+        <div class="card-header">
+            <h3>{{ result.name | title }}</h3>
+            <span class="status-badge {{ result.status }}">{{ result.status }}</span>
+        </div>
+
+        <div class="card-body">
+            {% if result.message %}
+            <p class="message">{{ result.message }}</p>
+            {% endif %}
+
+            {% if result.details %}
+            <div class="details">
+                {% for key, value in result.details.items() %}
+                {% if value is not none and value != '' %}
+                <div class="detail-row">
+                    <span class="detail-key">{{ key | replace('_', ' ') | title }}:</span>
+                    <span class="detail-value">
+                        {% if value is mapping %}
+                        {{ value | tojson }}
+                        {% elif value is sequence and value is not string %}
+                        {{ value | join(', ') }}
+                        {% else %}
+                        {{ value }}
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if result.duration_ms > 0 %}
+            <div class="duration">
+                Duration: {{ (result.duration_ms / 1000) | round(3) }}s
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</section>

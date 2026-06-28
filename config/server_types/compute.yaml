@@ -1,0 +1,125 @@
+# Compute Server Configuration
+# High Performance Computing servers with multi-socket CPUs and high-speed networking
+
+server_type: compute
+mode: auto
+detector_mode: real
+
+tests:
+  - name: cpu_test
+    enabled: true
+    params:
+      stress_duration: 600
+      threads: auto
+      numa_check: true
+
+  - name: memory_test
+    enabled: true
+    params:
+      capacity_check: true
+      ecc_check: true
+      numa_balance_check: true
+      stress_duration: 600
+
+  - name: storage_test
+    enabled: true
+    params:
+      test_nvme: true
+      performance_test: true
+
+  - name: network_test
+    enabled: true
+    params:
+      test_ports: auto
+      throughput_test: true
+      rdma_check: true
+      latency_test: true
+
+  - name: infiniband_test
+    enabled: true
+    params:
+      detect_mellanox: true
+      link_speed_check: true
+      rdma_capability: true
+
+  - name: bmc_test
+    enabled: true
+    params:
+      ipmi_check: true
+      sensor_check: true
+
+  - name: pcie_test
+    enabled: true
+    params:
+      bandwidth_test: true
+
+# CPU Stress - Extended for HPC
+cpu_stress:
+  enabled: true
+  duration_seconds: 1800
+  sample_interval_seconds: 10
+  threads: null
+  thresholds:
+    temperature:
+      min_value: 0
+      max_value: 90
+      warning_pct: 0.83
+      critical_pct: 0.94
+    utilization:
+      min_value: 85
+      max_value: 100
+    frequency:
+      min_value: 1500
+      max_value: 4000
+
+# GPU Stress - Optional for compute nodes with accelerators
+gpu_stress:
+  enabled: false
+  duration_seconds: 1800
+  sample_interval_seconds: 10
+  gpu_indices: []
+  thresholds:
+    temperature:
+      min_value: 0
+      max_value: 85
+      warning_pct: 0.82
+      critical_pct: 0.94
+    utilization:
+      min_value: 85
+      max_value: 100
+    power:
+      min_value: 50
+      max_value: 350
+      warning_pct: 0.9
+      critical_pct: 0.98
+
+# NVMe Stress
+nvme_stress:
+  enabled: true
+  duration_seconds: 300
+  sample_interval_seconds: 5
+  devices: []
+  test_file_size_gb: 20
+  write_ratio: 0.3
+  thresholds:
+    temperature:
+      min_value: 0
+      max_value: 70
+      warning_pct: 0.86
+      critical_pct: 0.93
+
+# Network-specific settings for HPC
+network:
+  min_link_speed_gbps: 10
+  preferred_nics:
+    - Mellanox ConnectX-6
+    - Intel E810
+    - Broadcom BCM57412
+  rdma_protocols:
+    - RoCEv2
+    - InfiniBand
+
+output:
+  formats: [json, html, csv]
+  upload_to_ems: true
+  ems_endpoint: "http://ems-server:8080/api/v1/results"

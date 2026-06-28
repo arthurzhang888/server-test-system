@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+
+{% block title %}Server Test Report - {{ server_sn }}{% endblock %}
+
+{% block content %}
+    {% include "components/summary.html" %}
+    {% include "components/hardware_table.html" %}
+{% endblock %}

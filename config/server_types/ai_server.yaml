@@ -1,0 +1,143 @@
+# AI Server Configuration
+# AI Training/Inference servers with GPU/NPU accelerators
+
+server_type: ai_server
+mode: auto
+detector_mode: real
+
+tests:
+  - name: cpu_test
+    enabled: true
+    params:
+      stress_duration: 300
+      threads: auto
+
+  - name: memory_test
+    enabled: true
+    params:
+      capacity_check: true
+      ecc_check: true
+      stress_duration: 300
+
+  - name: gpu_test
+    enabled: true
+    params:
+      detect_nvidia: true
+      detect_amd: true
+      detect_hygon: true
+      detect_cambricon: true
+      detect_ascend: true
+      detect_moore_threads: true
+      memory_test: true
+      compute_test: true
+      bandwidth_test: true
+
+  - name: storage_test
+    enabled: true
+    params:
+      test_nvme: true
+      performance_test: true
+
+  - name: network_test
+    enabled: true
+    params:
+      test_ports: auto
+      throughput_test: true
+      rdma_check: true
+
+  - name: bmc_test
+    enabled: true
+    params:
+      ipmi_check: true
+      sensor_check: true
+
+# CPU Stress
+cpu_stress:
+  enabled: true
+  duration_seconds: 600
+  sample_interval_seconds: 5
+  threads: null
+  thresholds:
+    temperature:
+      min_value: 0
+      max_value: 85
+      warning_pct: 0.82
+      critical_pct: 0.94
+    utilization:
+      min_value: 80
+      max_value: 100
+
+# GPU Stress - Extended for AI servers
+gpu_stress:
+  enabled: true
+  duration_seconds: 1800
+  sample_interval_seconds: 10
+  gpu_indices: []
+  thresholds:
+    temperature:
+      min_value: 0
+      max_value: 85
+      warning_pct: 0.82
+      critical_pct: 0.94
+    utilization:
+      min_value: 80
+      max_value: 100
+    memory_utilization:
+      min_value: 50
+      max_value: 100
+    power:
+      min_value: 100
+      max_value: 500
+      warning_pct: 0.9
+      critical_pct: 0.98
+    clock_speed:
+      min_value: 500
+      max_value: 2500
+
+# NVMe Stress
+nvme_stress:
+  enabled: true
+  duration_seconds: 600
+  sample_interval_seconds: 10
+  devices: []
+  test_file_size_gb: 100
+  write_ratio: 0.5
+  thresholds:
+    temperature:
+      min_value: 0
+      max_value: 70
+      warning_pct: 0.86
+      critical_pct: 0.93
+    health_percent:
+      min_value: 95
+      max_value: 100
+    spare_percent:
+      min_value: 10
+      max_value: 100
+
+# GPU-specific settings for AI servers
+gpu:
+  min_gpu_count: 2
+  supported_vendors:
+    - NVIDIA
+    - AMD
+    - Hygon
+    - Cambricon
+    - Huawei Ascend
+    - Moore Threads
+  min_vram_gb: 16
+  required_features:
+    - Tensor Cores (NVIDIA)
+    - Matrix Cores (AMD)
+    - MME (Cambricon)
+
+# High-speed storage for AI datasets
+storage:
+  min_nvme_drives: 4
+  raid_recommended: true
+  preferred_raid_level: 0
+
+output:
+  formats: [json, html]
+  upload_to_ems: true
+  ems_endpoint: "http://ems-server:8080/api/v1/results"
