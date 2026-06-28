@@ -2,6 +2,7 @@ from .base import StressTestBase, ThresholdConfig, MetricResult
 from .cpu_stress import CPUStressTest
 from .gpu_stress import GPUStressTest
 from .nvme_stress import NVMeStressTest
+from .dpu_stress import DPUStressTest, DPUStressThresholds, DPUTestType
 
 __all__ = [
     "StressTestBase",
@@ -10,4 +11,7 @@ __all__ = [
     "CPUStressTest",
     "GPUStressTest",
     "NVMeStressTest",
+    "DPUStressTest",
+    "DPUStressThresholds",
+    "DPUTestType",
 ]
