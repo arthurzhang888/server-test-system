@@ -1,5 +1,6 @@
 from .base import BaseDetector, DetectorMode
 from .bmc import BMCDetector
+from .bios import BIOSDetector
 from .cpu import CPUDetector
 from .gpu import GPUDetector
 from .memory import MemoryDetector
@@ -11,4 +12,4 @@ from .sensor import SensorDetector
 from .storage import StorageDetector
 from .tpm import TPMDetector
 
-__all__ = ["BaseDetector", "DetectorMode", "BMCDetector", "CPUDetector", "GPUDetector", "MemoryDetector", "NetworkDetector", "PCIeDetector", "PSUDetector", "RAIDDetector", "SensorDetector", "StorageDetector", "TPMDetector"]
+__all__ = ["BaseDetector", "DetectorMode", "BMCDetector", "BIOSDetector", "CPUDetector", "GPUDetector", "MemoryDetector", "NetworkDetector", "PCIeDetector", "PSUDetector", "RAIDDetector", "SensorDetector", "StorageDetector", "TPMDetector"]
