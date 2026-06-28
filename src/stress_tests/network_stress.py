@@ -1,5 +1,7 @@
 """Network interface stress test implementation."""
 
+import json
+import os
 import subprocess
 import time
 import re
@@ -341,7 +343,6 @@ class NetworkStressTest(StressTestBase):
             )
 
             if result.returncode == 0:
-                import json
                 interfaces = json.loads(result.stdout)
 
                 best_iface = None
@@ -567,7 +568,6 @@ class NetworkStressTest(StressTestBase):
             )
 
             if result.returncode == 0:
-                import json
                 data = json.loads(result.stdout)
 
                 for iface in data:

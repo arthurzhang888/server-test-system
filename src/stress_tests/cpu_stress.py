@@ -205,3 +205,21 @@ class CPUStressTest(StressTestBase):
             pass
 
         return 0.0
+
+    def quick_test(self):
+        """Run a quick 30-second CPU stress test."""
+        original_duration = self.duration_seconds
+        self.duration_seconds = 30
+        try:
+            return self.run()
+        finally:
+            self.duration_seconds = original_duration
+
+    def extended_test(self, duration: int = 1800):
+        """Run extended CPU stress test (default 30 minutes)."""
+        original_duration = self.duration_seconds
+        self.duration_seconds = duration
+        try:
+            return self.run()
+        finally:
+            self.duration_seconds = original_duration

@@ -148,6 +148,7 @@ class GPUStressTest(StressTestBase):
 
     def _detect_amd(self) -> List[GPUInfo]:
         """Detect AMD GPUs via rocm-smi."""
+        import json
         gpus = []
         try:
             result = subprocess.run(
@@ -155,7 +156,6 @@ class GPUStressTest(StressTestBase):
                 capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
-                import json
                 data = json.loads(result.stdout)
                 for card in data.get("card_list", []):
                     gpus.append(GPUInfo(
