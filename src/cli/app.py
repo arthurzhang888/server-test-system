@@ -18,46 +18,60 @@ def cli(ctx):
 @click.option('--config', '-c', type=click.Path(exists=True), help='Path to config file')
 @click.option('--output', '-o', type=click.Path(), default='./reports', help='Output directory')
 @click.option('--mock', is_flag=True, help='Use mock mode for testing')
-def run(config, output, mock):
-    """Run tests in automatic mode."""
+@click.option('--parallel/--sequential', default=True, help='Execution mode')
+@click.option('--workers', '-w', type=int, default=4, help='Number of parallel workers')
+def run(config, output, mock, parallel, workers):
+    """Run hardware detection tests."""
+    from src.core.engine import TestEngine, EngineConfig
+    from src.core.scheduler import SchedulerConfig
+    from src.detectors.base import DetectorMode
+    from src.core.events import EventType
+
     click.echo("Starting Server Test System...")
 
-    # Load configuration
-    loader = ConfigLoader()
-    if config:
-        cfg = loader.load_global_config(config)
-    else:
-        default_config = Path(__file__).parent.parent.parent / "config" / "global.yaml"
-        cfg = loader.load_global_config(default_config)
+    # Configure engine
+    detector_mode = DetectorMode.MOCK if mock else DetectorMode.REAL
+    strategy = "parallel" if parallel else "sequential"
 
-    # Override with mock mode if specified
-    if mock:
-        from src.config.schemas import DetectorMode
-        cfg.detector_mode = DetectorMode.MOCK
-        click.echo("Running in MOCK mode (simulated hardware)")
-
-    click.echo(f"Server type: {cfg.server_type.value}")
-    click.echo(f"Mode: {cfg.mode}")
-    click.echo(f"Tests to run: {len(cfg.tests)}")
-
-    # TODO: Run actual tests (will be implemented in later tasks)
-    # For now, create a minimal report
-    report = TestReport(
-        server_sn="UNKNOWN",
+    engine_config = EngineConfig(
+        server_sn="UNKNOWN",  # Could detect from BIOS
         server_model="Unknown Model",
-        server_type=cfg.server_type.value
+        server_type="generic",
+        detector_mode=detector_mode,
+        scheduler_config=SchedulerConfig(
+            strategy=strategy,
+            max_workers=workers
+        ),
+        output_dir=output
     )
 
-    # Generate report
-    output_path = Path(output)
-    output_path.mkdir(parents=True, exist_ok=True)
+    engine = TestEngine(engine_config)
 
-    reporter = JSONReporter()
-    report_file = output_path / "test_report.json"
-    reporter.save(report, report_file)
+    # Register progress callback
+    engine.on_progress(lambda e: click.echo(
+        f"Progress: {e.data['completed']}/{e.data['total']} "
+        f"({e.data['percentage']:.1f}%) - {e.data['current_detector']}"
+    ))
 
-    click.echo(f"\nReport saved to: {report_file}")
-    click.echo("Test run completed.")
+    # Register and run detectors
+    engine.register_default_detectors()
+
+    click.echo(f"Running {len(engine.detectors)} detectors in {strategy} mode...")
+
+    report = engine.run()
+
+    # Print summary
+    click.echo("\n" + "=" * 50)
+    click.echo("Test Summary")
+    click.echo("=" * 50)
+    click.echo(f"Total: {report.summary['total']}")
+    click.echo(f"Passed: {report.summary['passed']}")
+    click.echo(f"Failed: {report.summary['failed']}")
+    click.echo(f"Errors: {report.summary['errors']}")
+    click.echo(f"Duration: {report.duration_seconds:.2f}s")
+    click.echo(f"Overall: {report.overall_status.value}")
+    click.echo("=" * 50)
+    click.echo(f"\nReport saved to: {output}/test_report.json")
 
 
 @cli.command()
