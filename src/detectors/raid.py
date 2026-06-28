@@ -258,10 +258,256 @@ class RAIDDetector(BaseDetector):
 
     def _get_arcconf_info(self, controller_index: int) -> Dict[str, Any]:
         """Get RAID info using arcconf (Adaptec)."""
-        # Placeholder - will be implemented in Task 2
-        return {}
+        info = {
+            "arrays": [],
+            "physical_drives": [],
+            "battery": {"present": False}
+        }
+
+        try:
+            # Check if arcconf exists
+            result = subprocess.run(
+                ["which", "arcconf"],
+                capture_output=True,
+                timeout=2
+            )
+            if result.returncode != 0:
+                return info
+
+            # Get controller info
+            ctrl_result = subprocess.run(
+                ["arcconf", "getconfig", str(controller_index + 1)],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if ctrl_result.returncode == 0:
+                info.update(self._parse_arcconf_output(ctrl_result.stdout))
+
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+        return info
+
+    def _parse_arcconf_output(self, output: str) -> Dict[str, Any]:
+        """Parse arcconf getconfig output."""
+        result = {
+            "arrays": [],
+            "physical_drives": [],
+            "battery": {"present": False}
+        }
+
+        current_section = None
+        current_drive = None
+        current_array = None
+
+        for line in output.split("\n"):
+            line = line.strip()
+
+            # Detect section
+            if "Controller Battery Information" in line:
+                current_section = "battery"
+                result["battery"]["present"] = True
+            elif "Logical Device information" in line:
+                current_section = "arrays"
+            elif "Physical Device information" in line:
+                current_section = "drives"
+            elif line.startswith("Logical Device number"):
+                if current_array:
+                    result["arrays"].append(current_array)
+                current_array = {
+                    "id": int(line.split()[-1]),
+                    "raid_level": "Unknown",
+                    "status": "Unknown",
+                    "size_gb": 0,
+                    "drives": 0
+                }
+            elif line.startswith("Device #"):
+                if current_drive:
+                    result["physical_drives"].append(current_drive)
+                current_drive = {
+                    "enclosure": 0,
+                    "slot": len(result["physical_drives"]),
+                    "model": "Unknown",
+                    "size_gb": 0,
+                    "status": "Online"
+                }
+
+            # Parse battery info
+            elif current_section == "battery":
+                if "Status" in line and ":" in line:
+                    result["battery"]["status"] = line.split(":")[1].strip()
+                elif "Remaining Charge" in line and ":" in line:
+                    charge_match = re.search(r'(\d+)', line)
+                    if charge_match:
+                        result["battery"]["charge_percent"] = int(charge_match.group(1))
+
+            # Parse array info
+            elif current_section == "arrays" and current_array:
+                if "RAID level" in line:
+                    raid_match = re.search(r'RAID level\s*:\s*(\w+)', line, re.IGNORECASE)
+                    if raid_match:
+                        current_array["raid_level"] = raid_match.group(1).upper()
+                elif "Status of logical device" in line:
+                    current_array["status"] = line.split(":")[1].strip()
+                elif "Size" in line:
+                    size_match = re.search(r'(\d+)\s*GB', line, re.IGNORECASE)
+                    if size_match:
+                        current_array["size_gb"] = int(size_match.group(1))
+
+            # Parse drive info
+            elif current_section == "drives" and current_drive:
+                if "State" in line:
+                    current_drive["status"] = line.split(":")[1].strip()
+                elif "Model" in line:
+                    current_drive["model"] = line.split(":")[1].strip()
+                elif "Size" in line:
+                    size_match = re.search(r'(\d+)\s*GB', line, re.IGNORECASE)
+                    if size_match:
+                        current_drive["size_gb"] = int(size_match.group(1))
+
+        # Add last entries
+        if current_array:
+            result["arrays"].append(current_array)
+        if current_drive:
+            result["physical_drives"].append(current_drive)
+
+        return result
 
     def _get_ssacli_info(self, controller_index: int) -> Dict[str, Any]:
         """Get RAID info using ssacli (HP/HPE)."""
-        # Placeholder - will be implemented in Task 2
-        return {}
+        info = {
+            "arrays": [],
+            "physical_drives": [],
+            "battery": {"present": False}
+        }
+
+        try:
+            # Check if ssacli exists (also try hpacucli for older systems)
+            for cmd in ["ssacli", "hpacucli"]:
+                result = subprocess.run(
+                    ["which", cmd],
+                    capture_output=True,
+                    timeout=2
+                )
+                if result.returncode == 0:
+                    tool = cmd
+                    break
+            else:
+                return info
+
+            # Get controller detail
+            ctrl_result = subprocess.run(
+                [tool, f"ctrl slot={controller_index}", "show", "detail"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if ctrl_result.returncode == 0:
+                # Parse battery/cache info
+                if "Cache Status" in ctrl_result.stdout or "Battery" in ctrl_result.stdout:
+                    info["battery"]["present"] = True
+                    info["battery"]["status"] = "OK" if "OK" in ctrl_result.stdout else "Unknown"
+
+            # Get logical drives (arrays)
+            ld_result = subprocess.run(
+                [tool, f"ctrl slot={controller_index}", "ld", "all", "show", "detail"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if ld_result.returncode == 0:
+                info["arrays"] = self._parse_ssacli_ld_output(ld_result.stdout)
+
+            # Get physical drives
+            pd_result = subprocess.run(
+                [tool, f"ctrl slot={controller_index}", "pd", "all", "show", "detail"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if pd_result.returncode == 0:
+                info["physical_drives"] = self._parse_ssacli_pd_output(pd_result.stdout)
+
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+        return info
+
+    def _parse_ssacli_ld_output(self, output: str) -> List[Dict[str, Any]]:
+        """Parse ssacli logical drive output."""
+        arrays = []
+        current_array = None
+
+        for line in output.split("\n"):
+            line = line.strip()
+
+            if line.startswith("Logical Drive:"):
+                if current_array:
+                    arrays.append(current_array)
+                current_array = {
+                    "id": len(arrays),
+                    "raid_level": "Unknown",
+                    "status": "Unknown",
+                    "size_gb": 0,
+                    "drives": 0
+                }
+            elif current_array:
+                if "RAID" in line and "Level" in line:
+                    # Match patterns like "RAID Level: RAID 5" or "RAID Level: RAID5"
+                    # First try to match "RAID 5" or "RAID5" after the colon
+                    raid_match = re.search(r'RAID\s*(\d+)', line, re.IGNORECASE)
+                    if raid_match:
+                        current_array["raid_level"] = f"RAID{raid_match.group(1)}"
+                elif "Status:" in line:
+                    current_array["status"] = line.split(":")[1].strip()
+                elif "Size:" in line:
+                    size_match = re.search(r'(\d+(?:\.\d+)?)\s*(GB|TB)', line, re.IGNORECASE)
+                    if size_match:
+                        size = float(size_match.group(1))
+                        unit = size_match.group(2).upper()
+                        current_array["size_gb"] = size if unit == "GB" else int(size * 1024)
+
+        if current_array:
+            arrays.append(current_array)
+
+        return arrays
+
+    def _parse_ssacli_pd_output(self, output: str) -> List[Dict[str, Any]]:
+        """Parse ssacli physical drive output."""
+        drives = []
+        current_drive = None
+
+        for line in output.split("\n"):
+            line = line.strip()
+
+            if "physicaldrive" in line.lower():
+                if current_drive:
+                    drives.append(current_drive)
+                current_drive = {
+                    "enclosure": 0,
+                    "slot": len(drives),
+                    "model": "Unknown",
+                    "size_gb": 0,
+                    "status": "OK"
+                }
+            elif current_drive:
+                if "Status:" in line:
+                    current_drive["status"] = line.split(":")[1].strip()
+                elif "Model:" in line:
+                    current_drive["model"] = line.split(":")[1].strip()
+                elif "Size:" in line:
+                    size_match = re.search(r'(\d+(?:\.\d+)?)\s*(GB|TB)', line, re.IGNORECASE)
+                    if size_match:
+                        size = float(size_match.group(1))
+                        unit = size_match.group(2).upper()
+                        current_drive["size_gb"] = size if unit == "GB" else int(size * 1024)
+
+        if current_drive:
+            drives.append(current_drive)
+
+        return drives
