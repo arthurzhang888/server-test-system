@@ -1,0 +1,112 @@
+# AI Server configuration with stress testing
+server_type: ai_server
+mode: auto
+detector_mode: real
+
+tests:
+  - name: cpu_test
+    enabled: true
+    params:
+      stress_duration: 300
+      threads: auto
+
+  - name: memory_test
+    enabled: true
+    params:
+      capacity_check: true
+      ecc_check: true
+      stress_duration: 300
+
+  - name: gpu_test
+    enabled: true
+    params:
+      detect_nvidia: true
+      detect_amd: true
+      memory_test: true
+
+  - name: storage_test
+    enabled: true
+    params:
+      test_nvme: true
+      performance_test: true
+
+  - name: network_test
+    enabled: true
+    params:
+      test_ports: auto
+      throughput_test: true
+
+# CPU Stress Test Configuration
+cpu_stress:
+  enabled: true
+  duration_seconds: 600  # 10 minutes
+  sample_interval_seconds: 5
+  threads: null  # auto = CPU count
+  thresholds:
+    temperature:
+      min_value: 0
+      max_value: 95
+      warning_pct: 0.89  # Warning at 85°C
+      critical_pct: 0.95  # Critical at 90°C
+    utilization:
+      min_value: 80
+      max_value: 100
+    frequency:
+      min_value: 1000  # MHz - detect thermal throttling
+      max_value: 5000
+
+# GPU Stress Test Configuration
+gpu_stress:
+  enabled: true
+  duration_seconds: 600  # 10 minutes
+  sample_interval_seconds: 5
+  gpu_indices: []  # Empty = all GPUs
+  thresholds:
+    temperature:
+      min_value: 0
+      max_value: 95
+      warning_pct: 0.84  # Warning at 80°C
+      critical_pct: 0.95  # Critical at 90°C
+    utilization:
+      min_value: 80
+      max_value: 100
+    memory_utilization:
+      min_value: 50
+      max_value: 100
+    power:
+      min_value: 50
+      max_value: 400  # Watts - adjust based on GPU model
+      warning_pct: 0.9
+      critical_pct: 0.98
+    clock_speed:
+      min_value: 500  # MHz - detect throttling
+      max_value: 2500
+
+# NVMe Stress Test Configuration
+nvme_stress:
+  enabled: true
+  duration_seconds: 300  # 5 minutes
+  sample_interval_seconds: 5
+  devices: []  # Empty = auto-detect
+  test_file_size_gb: 10
+  write_ratio: 0.3  # 30% writes, 70% reads
+  thresholds:
+    temperature:
+      min_value: 0
+      max_value: 85
+      warning_pct: 0.82  # Warning at 70°C
+      critical_pct: 0.95  # Critical at 80°C
+    health_percent:
+      min_value: 90
+      max_value: 100
+    spare_percent:
+      min_value: 10  # Minimum spare blocks
+      max_value: 100
+    media_errors:
+      min_value: 0
+      max_value: 0  # No media errors allowed
+
+output:
+  formats: [json, html]
+  upload_to_ems: true
+  ems_endpoint: "http://ems-server:8080/api/v1/results"
