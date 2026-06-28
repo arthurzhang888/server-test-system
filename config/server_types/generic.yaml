@@ -1,0 +1,33 @@
+server_type: generic
+mode: auto
+detector_mode: real
+tests:
+  - name: cpu_test
+    enabled: true
+    params:
+      stress_duration: 300
+      threads: auto
+
+  - name: memory_test
+    enabled: true
+    params:
+      capacity_check: true
+      ecc_check: true
+      stress_duration: 300
+
+  - name: storage_test
+    enabled: true
+    params:
+      test_nvme: true
+      test_sata: true
+      performance_test: false
+
+  - name: network_test
+    enabled: true
+    params:
+      test_ports: auto
+      throughput_test: false
+
+output:
+  formats: [json]
+  upload_to_ems: false
