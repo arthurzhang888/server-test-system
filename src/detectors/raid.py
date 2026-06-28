@@ -128,6 +128,10 @@ class RAIDDetector(BaseDetector):
         except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError):
             pass
 
+        # Assign proper indices after collection
+        for i, controller in enumerate(controllers):
+            controller["index"] = i
+
         return controllers
 
     def _parse_lspci_line(self, line: str) -> Optional[Dict[str, Any]]:
@@ -152,7 +156,6 @@ class RAIDDetector(BaseDetector):
             vendor = "Intel"
 
         return {
-            "index": len([c for c in []]),  # Will be set by caller
             "model": description.strip(),
             "vendor": vendor,
             "pci_slot": pci_slot,
