@@ -4,29 +4,30 @@ Hardware testing system for production line servers. Supports comprehensive hard
 
 ## Features
 
-### Hardware Detection (20 Detectors)
-- **CPU**: Model, cores, threads, frequency, vendor
-- **Memory**: Total, available, DIMM details
-- **Storage**: Disks, NVMe health, RAID controllers
-- **Network**: Interfaces, MAC, speed, InfiniBand
-- **GPU**: NVIDIA, AMD, and domestic GPUs (Hygon, Cambricon, Huawei Ascend, Moore Threads)
-- **BMC/IPMI**: Version, IP, sensors
-- **BIOS**: Version, secure boot, characteristics
-- **PCIe**: Device enumeration
-- **USB**: Device detection
-- **Chassis**: Type, serial numbers
-- **TPM**: Presence, version
-- **Security**: SGX, SEV, TXT, memory encryption
-- **FPGA**: Device detection
-- **Sensors**: Temperatures, fans
-- **PSU**: Power supply status
-- **Serial Ports**: RS-232, RS-485, USB serial
+### Hardware Detection (21 Detectors)
+| Category | Detectors | Details |
+|----------|-----------|---------|
+| **Compute** | CPU, Memory, DIMM | Cores, frequency, DIMM slots, total/populated |
+| **Storage** | Storage, NVMe Health, RAID | Disks, SMART data, RAID controllers (LSI/Adaptec/HP) |
+| **Network** | Network, InfiniBand, DPU | Interfaces, MAC, speed, IB devices, BlueField DPU |
+| **GPU** | GPU | NVIDIA, AMD, domestic (Hygon, Cambricon, Huawei Ascend, Moore Threads) |
+| **Management** | BMC, BIOS, TPM, Chassis | IPMI version, firmware, secure boot, asset tags |
+| **Bus/IO** | PCIe, USB, Serial | Device enumeration, USB controllers, RS-232/485 |
+| **Power/Cooling** | PSU, Sensors | Power supply status, temperatures, fans |
+| **Security** | Security, FPGA | SGX/SEV/TXT, FPGA accelerators (Xilinx/Intel)
 
-### Stress Testing
-- **CPU Stress**: Multi-core load testing with configurable duration
-- **GPU Stress**: Multi-vendor support (NVIDIA, AMD, domestic GPUs)
-- **NVMe Stress**: Disk I/O testing with health monitoring
-- **Network Throughput**: Bandwidth testing
+### Stress Testing (9 Test Types)
+| Test | Description | Thresholds |
+|------|-------------|------------|
+| **CPU** | Multi-core load with stress-ng fallback | Temperature, utilization, frequency |
+| **GPU** | Multi-vendor (NVIDIA/AMD/domestic) | Memory temp, utilization, power |
+| **Memory** | RAM bandwidth and stability | Error rate, bandwidth |
+| **NVMe** | Disk I/O with health monitoring | Temperature, health %, media errors |
+| **Storage** | fio-based IOPS/bandwidth tests | IOPS, latency, temperature |
+| **Network** | Throughput and latency tests | Bandwidth, packet loss, latency |
+| **PCIe** | Link bandwidth validation | Link speed, errors |
+| **Power** | PSU load and efficiency | Voltage, wattage, load % |
+| **FPGA** | Accelerator card stress | Temperature, power utilization |
 
 ### Server Types
 - **Generic**: Standard server testing
@@ -75,25 +76,37 @@ python -m src.main interactive
 server-master/
 ├── src/
 │   ├── config/          # Configuration management
-│   ├── core/            # Test engine, scheduler, events
-│   ├── detectors/       # Hardware detectors (20 types)
-│   │   └── platform/    # Linux/Windows abstraction
+│   ├── core/            # Test engine, scheduler, events, state
+│   ├── detectors/       # 21 hardware detectors
+│   │   ├── base.py      # BaseDetector abstract class
+│   │   ├── cpu.py, memory.py, dimm.py
+│   │   ├── storage.py, nvme_health.py, raid.py
+│   │   ├── network.py, infiniband.py, dpu.py
+│   │   ├── gpu.py       # Multi-vendor GPU support
+│   │   ├── bmc.py, bios.py, tpm.py, chassis.py
+│   │   ├── pcie.py, usb.py, serial.py
+│   │   ├── psu.py, sensor.py
+│   │   └── security.py, fpga.py
 │   ├── reporters/       # Report generators (JSON/HTML/CSV)
 │   ├── server/          # Central server (FastAPI + WebSocket)
-│   ├── stress_tests/    # Stress testing framework
+│   ├── stress_tests/    # 9 stress test types
+│   │   ├── base.py      # BaseStressTest abstract class
+│   │   ├── cpu_stress.py, gpu_stress.py, memory_stress.py
+│   │   ├── nvme_stress.py, storage_stress.py
+│   │   ├── network_stress.py, pcie_stress.py
+│   │   ├── power_stress.py, fpga_stress.py
+│   │   └── thresholds.py  # Threshold configurations
 │   └── cli/             # Command-line interface
 ├── config/
 │   ├── server_types/    # Server-specific configs
-│   │   ├── generic.yaml
-│   │   ├── ai_server.yaml
-│   │   ├── storage.yaml
-│   │   └── compute.yaml
 │   └── global.yaml      # Global settings
 ├── templates/           # Jinja2 HTML templates
-│   ├── base.html
-│   ├── report.html
-│   └── static/css/
-├── tests/               # Unit tests (237 tests)
+├── tests/               # 576+ unit tests
+│   ├── test_detectors/  # 177 detector tests
+│   ├── test_stress/     # 333 stress test tests
+│   ├── test_core/       # Core engine tests
+│   ├── test_reporters/  # Reporter tests
+│   └── test_functional/ # Functional tests
 └── docs/                # Documentation
 ```
 
@@ -119,6 +132,18 @@ tests:
       detect_cambricon: true
 ```
 
+### RAID Controller Support
+
+RAID detection supports multiple vendor tools with automatic fallback:
+
+| Vendor | Tool | Controllers |
+|--------|------|-------------|
+| LSI/Broadcom | StorCLI | MegaRAID, SAS controllers |
+| Adaptec | arcconf | Series 6/7/8 RAID controllers |
+| HP/HPE | ssacli/hpacucli | Smart Array controllers |
+
+Detection uses layered approach: lspci for initial discovery, vendor tools for detailed array/drive info.
+
 ### Stress Test Configuration
 
 Stress tests support configurable thresholds:
@@ -137,20 +162,29 @@ stress_tests:
     thresholds:
       max_memory_temp: 95
       max_utilization: 100
+  nvme:
+    duration: 300
+    thresholds:
+      max_temperature: 85
+      health_percent_min: 90
+      max_media_errors: 0
 ```
 
 ## Testing
 
 ```bash
-# Run all tests (237 tests)
+# Run all tests (576+ tests across all categories)
 pytest
 
 # Run with coverage
 pytest --cov=src
 
-# Run specific test category
-pytest tests/test_detectors/
-pytest tests/test_reporters/
+# Run specific test categories
+pytest tests/test_detectors/      # 177 hardware detection tests
+pytest tests/test_stress/         # 333 stress test tests
+pytest tests/test_reporters/      # Reporter tests
+pytest tests/test_core/           # Core engine tests
+pytest tests/test_functional/     # Functional tests
 ```
 
 ## API Documentation (Server Mode)
@@ -167,6 +201,21 @@ pytest tests/test_reporters/
 
 - `ws://host/ws/{client_id}` - Real-time test progress
 
+## Features Highlights
+
+### Domestic Hardware Support
+Full support for Chinese domestic hardware:
+- **GPUs**: Hygon DCU, Cambricon MLU, Huawei Ascend, Moore Threads
+- **DPU**: NVIDIA BlueField-3/4 with DOCA support
+- **FPGA**: Xilinx Alveo, Intel Stratix/Agilex
+
+### Production Ready
+- Mock mode for development/testing without hardware
+- Real-time WebSocket progress streaming
+- Multi-server management via central server
+- Threshold-based pass/fail determination
+- Comprehensive error handling and logging
+
 ## Development
 
 ### Adding a New Detector
@@ -174,13 +223,30 @@ pytest tests/test_reporters/
 1. Create detector class in `src/detectors/{name}.py`
 2. Inherit from `BaseDetector`
 3. Implement `detect_real()` and `detect_mock()` methods
-4. Add tests in `tests/test_detectors/test_{name}.py`
+4. Update `src/detectors/__init__.py` to export
+5. Add tests in `tests/test_detectors/test_{name}.py`
+
+Example:
+```python
+from .base import BaseDetector, DetectorMode
+
+class MyDetector(BaseDetector):
+    def detect_real(self) -> Dict[str, Any]:
+        # Hardware detection logic
+        return {"present": True, "data": ...}
+
+    def detect_mock(self) -> Dict[str, Any]:
+        # Simulated data for testing
+        return {"present": True, "data": ...}
+```
 
 ### Adding a New Stress Test
 
 1. Create stress test class in `src/stress_tests/{name}_stress.py`
 2. Inherit from `BaseStressTest`
-3. Implement `run()` method with threshold monitoring
+3. Implement `start_stress()`, `stop_stress()`, `collect_metrics()`
+4. Define thresholds in `thresholds.py`
+5. Add tests in `tests/test_stress/test_{name}_stress.py`
 
 ## License
 
