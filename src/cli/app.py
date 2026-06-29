@@ -37,17 +37,21 @@ def run(config, output, mock, parallel, workers, stress, cpu_stress_duration, gp
     detector_mode = DetectorMode.MOCK if mock else DetectorMode.REAL
     strategy = "parallel" if parallel else "sequential"
 
+    click.echo("Auto-detecting server information...")
     engine_config = EngineConfig(
-        server_sn="UNKNOWN",  # Could detect from BIOS
-        server_model="Unknown Model",
+        server_sn="",  # Will be auto-detected
+        server_model="",  # Will be auto-detected
         server_type="generic",
         detector_mode=detector_mode,
         scheduler_config=SchedulerConfig(
             strategy=strategy,
             max_workers=workers
         ),
-        output_dir=output
+        output_dir=output,
+        auto_detect_sn=True
     )
+    click.echo(f"Detected SN: {engine_config.server_sn}")
+    click.echo(f"Detected Model: {engine_config.server_model}")
 
     engine = TestEngine(engine_config)
 

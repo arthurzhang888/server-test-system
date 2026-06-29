@@ -1,0 +1,317 @@
+{# Performance Charts Component #}
+{% if stress_test_samples %}
+<section class="charts-section">
+    <h2>Performance Charts</h2>
+
+    {% if stress_test_samples.cpu %}
+    <div class="chart-container">
+        <h3>CPU Stress Test - Temperature</h3>
+        <canvas id="cpuTempChart"></canvas>
+    </div>
+    {% endif %}
+
+    {% if stress_test_samples.gpu %}
+    <div class="chart-container">
+        <h3>GPU Stress Test - Temperature & Utilization</h3>
+        <canvas id="gpuChart"></canvas>
+    </div>
+    {% endif %}
+
+    {% if stress_test_samples.nvme %}
+    <div class="chart-container">
+        <h3>NVMe Stress Test - Health Metrics</h3>
+        <canvas id="nvmeChart"></canvas>
+    </div>
+    {% endif %}
+</section>
+
+<script>
+// Chart configuration
+Chart.defaults.responsive = true;
+Chart.defaults.maintainAspectRatio = false;
+
+{% if stress_test_samples.cpu %}
+// CPU Temperature Chart
+const cpuTempCtx = document.getElementById('cpuTempChart').getContext('2d');
+const cpuSamples = {{ stress_test_samples.cpu | tojson }};
+
+new Chart(cpuTempCtx, {
+    type: 'line',
+    data: {
+        labels: cpuSamples.map(s => (s.elapsed_seconds / 60).toFixed(1) + 'm'),
+        datasets: [{
+            label: 'Temperature (°C)',
+            data: cpuSamples.map(s => s.metrics.temperature || s.metrics.temp),
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            tension: 0.4,
+            fill: true
+        }, {
+            label: 'Utilization (%)',
+            data: cpuSamples.map(s => s.metrics.utilization || s.metrics.usage),
+            borderColor: 'rgb(54, 162, 235)',
+            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        plugins: {
+            title: {
+                display: true,
+                text: 'CPU Temperature & Utilization Over Time'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Value'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Time (minutes)'
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
+{% if stress_test_samples.gpu %}
+// GPU Chart
+const gpuCtx = document.getElementById('gpuChart').getContext('2d');
+const gpuSamples = {{ stress_test_samples.gpu | tojson }};
+
+new Chart(gpuCtx, {
+    type: 'line',
+    data: {
+        labels: gpuSamples.map(s => (s.elapsed_seconds / 60).toFixed(1) + 'm'),
+        datasets: [{
+            label: 'GPU Temp (°C)',
+            data: gpuSamples.map(s => s.metrics.temperature || s.metrics.gpu_temp),
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            tension: 0.4,
+            fill: false
+        }, {
+            label: 'Memory Temp (°C)',
+            data: gpuSamples.map(s => s.metrics.memory_temperature || s.metrics.mem_temp),
+            borderColor: 'rgb(255, 159, 64)',
+            backgroundColor: 'rgba(255, 159, 64, 0.1)',
+            tension: 0.4,
+            fill: false
+        }, {
+            label: 'Utilization (%)',
+            data: gpuSamples.map(s => s.metrics.utilization || s.metrics.gpu_utilization),
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+            tension: 0.4,
+            fill: false,
+            yAxisID: 'y1'
+        }]
+    },
+    options: {
+        plugins: {
+            title: {
+                display: true,
+                text: 'GPU Metrics Over Time'
+            }
+        },
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: {
+                    display: true,
+                    text: 'Temperature (°C)'
+                }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: {
+                    display: true,
+                    text: 'Utilization (%)'
+                },
+                grid: {
+                    drawOnChartArea: false
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Time (minutes)'
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
+{% if stress_test_samples.nvme %}
+// NVMe Health Chart
+const nvmeCtx = document.getElementById('nvmeChart').getContext('2d');
+const nvmeSamples = {{ stress_test_samples.nvme | tojson }};
+
+new Chart(nvmeCtx, {
+    type: 'line',
+    data: {
+        labels: nvmeSamples.map(s => (s.elapsed_seconds / 60).toFixed(1) + 'm'),
+        datasets: [{
+            label: 'Temperature (°C)',
+            data: nvmeSamples.map(s => s.metrics.temperature || s.metrics.temp),
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            tension: 0.4,
+            fill: true
+        }, {
+            label: 'Health (%)',
+            data: nvmeSamples.map(s => s.metrics.health_percent || s.metrics.health),
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+            tension: 0.4,
+            fill: false
+        }]
+    },
+    options: {
+        plugins: {
+            title: {
+                display: true,
+                text: 'NVMe Temperature & Health Over Time'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Value'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Time (minutes)'
+                }
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endif %}
+
+{# Status Distribution Chart #}
+<section class="charts-section">
+    <h2>Test Results Distribution</h2>
+    <div class="chart-row">
+        <div class="chart-container half">
+            <h3>Status Distribution</h3>
+            <canvas id="statusChart"></canvas>
+        </div>
+        <div class="chart-container half">
+            <h3>Test Duration (ms)</h3>
+            <canvas id="durationChart"></canvas>
+        </div>
+    </div>
+</section>
+
+<script>
+// Status Distribution Pie Chart
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+const results = {{ results | tojson }};
+
+const statusCounts = {
+    passed: results.filter(r => r.status === 'passed').length,
+    failed: results.filter(r => r.status === 'failed').length,
+    error: results.filter(r => r.status === 'error').length,
+    skipped: results.filter(r => r.status === 'skipped').length
+};
+
+new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Passed', 'Failed', 'Error', 'Skipped'],
+        datasets: [{
+            data: [statusCounts.passed, statusCounts.failed, statusCounts.error, statusCounts.skipped],
+            backgroundColor: [
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(255, 159, 64, 0.8)',
+                'rgba(201, 203, 207, 0.8)'
+            ],
+            borderColor: [
+                'rgb(75, 192, 192)',
+                'rgb(255, 99, 132)',
+                'rgb(255, 159, 64)',
+                'rgb(201, 203, 207)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            },
+            title: {
+                display: true,
+                text: 'Test Status Distribution'
+            }
+        }
+    }
+});
+
+// Duration Bar Chart
+const durationCtx = document.getElementById('durationChart').getContext('2d');
+
+new Chart(durationCtx, {
+    type: 'bar',
+    data: {
+        labels: results.map(r => r.name.length > 20 ? r.name.substring(0, 20) + '...' : r.name),
+        datasets: [{
+            label: 'Duration (ms)',
+            data: results.map(r => r.duration_ms),
+            backgroundColor: results.map(r => {
+                if (r.status === 'passed') return 'rgba(75, 192, 192, 0.8)';
+                if (r.status === 'failed') return 'rgba(255, 99, 132, 0.8)';
+                return 'rgba(255, 159, 64, 0.8)';
+            }),
+            borderColor: results.map(r => {
+                if (r.status === 'passed') return 'rgb(75, 192, 192)';
+                if (r.status === 'failed') return 'rgb(255, 99, 132)';
+                return 'rgb(255, 159, 64)';
+            }),
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false
+            },
+            title: {
+                display: true,
+                text: 'Test Duration by Component'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Duration (ms)'
+                }
+            }
+        }
+    }
+});
+</script>

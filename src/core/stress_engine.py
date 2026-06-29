@@ -8,6 +8,11 @@ from src.stress_tests.base import StressTestBase, StressTestResult
 from src.stress_tests.cpu_stress import CPUStressTest, CPUThresholds
 from src.stress_tests.gpu_stress import GPUStressTest, GPUThresholds
 from src.stress_tests.nvme_stress import NVMeStressTest, NVMeThresholds
+from src.stress_tests.thresholds import (
+    load_cpu_thresholds, load_gpu_thresholds, load_nvme_thresholds,
+    StressTestThresholds
+)
+from src.config.schemas import GlobalConfig, CPUStressConfig, GPUStressConfig, NVMeStressConfig
 from src.core.state import TestResult, TestStatus
 from src.core.events import EventSystem, EventType, Event
 
@@ -36,6 +41,42 @@ class StressEngineConfig:
     # Device selection (None = auto-detect)
     gpu_indices: Optional[List[int]] = None
     nvme_devices: Optional[List[str]] = None
+
+    @classmethod
+    def from_global_config(cls, global_config: GlobalConfig) -> "StressEngineConfig":
+        """Create StressEngineConfig from GlobalConfig.
+
+        Loads all stress test settings including dynamic thresholds from configuration.
+
+        Args:
+            global_config: Loaded global configuration
+
+        Returns:
+            StressEngineConfig with values from global config
+        """
+        cpu_config = global_config.cpu_stress
+        gpu_config = global_config.gpu_stress
+        nvme_config = global_config.nvme_stress
+
+        # Load thresholds from config
+        cpu_thresholds = load_cpu_thresholds(cpu_config.thresholds)
+        gpu_thresholds = load_gpu_thresholds(gpu_config.thresholds)
+        nvme_thresholds = load_nvme_thresholds(nvme_config.thresholds)
+
+        return cls(
+            run_cpu_stress=cpu_config.enabled,
+            run_gpu_stress=gpu_config.enabled,
+            run_nvme_stress=nvme_config.enabled,
+            cpu_duration_seconds=cpu_config.duration_seconds,
+            gpu_duration_seconds=gpu_config.duration_seconds,
+            nvme_duration_seconds=nvme_config.duration_seconds,
+            sample_interval_seconds=cpu_config.sample_interval_seconds,
+            cpu_thresholds=cpu_thresholds,
+            gpu_thresholds=gpu_thresholds,
+            nvme_thresholds=nvme_thresholds,
+            gpu_indices=gpu_config.gpu_indices if gpu_config.gpu_indices else None,
+            nvme_devices=nvme_config.devices if nvme_config.devices else None
+        )
 
 
 class StressTestEngine:

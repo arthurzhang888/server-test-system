@@ -14,18 +14,30 @@ from src.detectors import (
 from src.core.state import TestResult, TestReport, TestStatus
 from src.core.events import EventSystem, EventType, Event
 from src.core.scheduler import DetectorScheduler, SchedulerConfig
+from src.utils.system_info import get_server_serial, get_server_model
 
 
 @dataclass
 class EngineConfig:
     """Configuration for test engine."""
-    server_sn: str
-    server_model: str
-    server_type: str
+    server_sn: str = ""
+    server_model: str = ""
+    server_type: str = "generic"
     detector_mode: DetectorMode = DetectorMode.MOCK
     scheduler_config: SchedulerConfig = field(default_factory=SchedulerConfig)
     output_formats: List[str] = field(default_factory=lambda: ["json"])
     output_dir: str = "./reports"
+    auto_detect_sn: bool = True
+    auto_upload_ems: bool = False
+    ems_config: Optional[Dict[str, Any]] = None
+
+    def __post_init__(self):
+        """Auto-detect server SN and model if not provided."""
+        if self.auto_detect_sn:
+            if not self.server_sn or self.server_sn == "UNKNOWN":
+                self.server_sn = get_server_serial()
+            if not self.server_model or self.server_model == "Unknown Model":
+                self.server_model = get_server_model()
 
 
 class TestEngine:
@@ -114,6 +126,14 @@ class TestEngine:
 
         self._save_reports(report)
 
+        # Auto-upload to EMS if enabled
+        if self.config.auto_upload_ems:
+            upload_success = self.upload_to_ems(report, self.config.ems_config)
+            if upload_success:
+                print(f"Report uploaded to EMS successfully")
+            else:
+                print(f"Report upload to EMS failed")
+
         return report
 
     def run_detector(self, detector_name: str) -> TestResult:
@@ -137,3 +157,60 @@ class TestEngine:
             from src.reporters.json_reporter import JSONReporter
             reporter = JSONReporter()
             reporter.save(report, output_path / "test_report.json")
+
+        if "html" in self.config.output_formats:
+            from src.reporters.html_reporter import HTMLReporter
+            reporter = HTMLReporter()
+            reporter.save(report, output_path / "test_report.html")
+
+        if "csv" in self.config.output_formats:
+            from src.reporters.csv_reporter import CSVReporter
+            reporter = CSVReporter()
+            reporter.save(report, output_path / "test_report.csv")
+
+    def upload_to_ems(self, report: TestReport, ems_config: Optional[Dict[str, Any]] = None) -> bool:
+        """Upload test report to EMS.
+
+        Args:
+            report: Test report to upload
+            ems_config: EMS configuration. If None, uses default settings.
+
+        Returns:
+            True if upload successful, False otherwise
+        """
+        try:
+            from src.adapters.ems_adapter import EMSAdapterFactory
+
+            if ems_config is None:
+                ems_config = {"type": "http", "endpoint": "http://localhost:8080"}
+
+            adapter = EMSAdapterFactory.create_adapter(ems_config)
+
+            # Convert report to dict for upload
+            result_dict = {
+                "server_sn": report.server_sn,
+                "server_model": report.server_model,
+                "server_type": report.server_type,
+                "start_time": report.start_time.isoformat() if report.start_time else None,
+                "end_time": report.end_time.isoformat() if report.end_time else None,
+                "duration_seconds": report.duration_seconds,
+                "overall_status": report.overall_status.value,
+                "summary": report.summary,
+                "results": [
+                    {
+                        "name": r.name,
+                        "status": r.status.value,
+                        "duration_ms": r.duration_ms,
+                        "message": r.message,
+                        "details": r.details
+                    }
+                    for r in report.results
+                ]
+            }
+
+            return adapter.upload_result(result_dict)
+
+        except Exception as e:
+            # Log error but don't fail the test
+            print(f"EMS upload failed: {e}")
+            return False
