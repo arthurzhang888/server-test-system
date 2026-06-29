@@ -29,6 +29,17 @@ Hardware testing system for production line servers. Supports comprehensive hard
 | **Power** | PSU load and efficiency | Voltage, wattage, load % |
 | **FPGA** | Accelerator card stress | Temperature, power utilization |
 
+### Advanced Features
+
+| Feature | Description |
+|---------|-------------|
+| **Grouped Execution** | Detectors organized by category (compute/storage/network/etc), groups execute sequentially, detectors within group run in parallel |
+| **Auto SN Detection** | Automatic server serial number and model detection from DMI/BIOS (sysfs/dmidecode/ipmitool) |
+| **Timeout Enforcement** | Signal-based (SIGALRM) and executor-based timeout for detector execution |
+| **Dynamic Thresholds** | Load stress test thresholds from YAML configuration with per-test customization |
+| **EMS Integration** | Auto-upload test reports to EMS (Equipment Management System) via HTTP/Webhook |
+| **Performance Charts** | Interactive Chart.js visualizations in HTML reports (status distribution, duration charts, temperature graphs) |
+
 ### Server Types
 - **Generic**: Standard server testing
 - **AI Server**: Optimized for GPU workloads with domestic GPU support
@@ -37,7 +48,7 @@ Hardware testing system for production line servers. Supports comprehensive hard
 
 ### Report Formats
 - **JSON**: Machine-readable output
-- **HTML**: Responsive web reports with Jinja2 templates
+- **HTML**: Responsive web reports with Jinja2 templates and Chart.js performance charts
 - **CSV**: Spreadsheet compatible
 
 ### Central Server (Server Mode)
@@ -50,6 +61,34 @@ FastAPI-based central server for managing multiple test clients:
 ### Platform Support
 - **Linux**: Native detection via `/proc`, `sysfs`, `dmidecode`, `lspci`
 - **Windows**: WMI and PowerShell-based detection
+
+### Execution Strategies
+
+The scheduler supports three execution strategies:
+
+| Strategy | Description | Use Case |
+|----------|-------------|----------|
+| `sequential` | Run detectors one at a time | Resource-constrained environments |
+| `parallel` | Run all detectors concurrently | Fast execution on powerful systems |
+| `grouped` | Execute by category (compute→storage→network→...) | **Default** - balanced resource usage |
+
+Groups execute sequentially, but detectors within each group run in parallel. This prevents resource contention while maximizing throughput.
+
+### EMS Auto-Upload
+
+Configure automatic report upload to your Equipment Management System:
+
+```yaml
+# config/global.yaml
+ems:
+  enabled: true
+  auto_upload: true
+  type: http          # or webhook
+  endpoint: "http://ems.company.com/api/reports"
+  api_key: "your-api-key"
+```
+
+Reports are automatically uploaded after test completion when `auto_upload` is enabled.
 
 ## Quick Start
 
@@ -77,6 +116,9 @@ server-master/
 ├── src/
 │   ├── config/          # Configuration management
 │   ├── core/            # Test engine, scheduler, events, state
+│   │   ├── engine.py    # Main test orchestration with auto SN detection
+│   │   ├── scheduler.py # Parallel/grouped/sequential execution strategies
+│   │   └── stress_engine.py # Stress test coordination
 │   ├── detectors/       # 21 hardware detectors
 │   │   ├── base.py      # BaseDetector abstract class
 │   │   ├── cpu.py, memory.py, dimm.py
@@ -95,18 +137,21 @@ server-master/
 │   │   ├── nvme_stress.py, storage_stress.py
 │   │   ├── network_stress.py, pcie_stress.py
 │   │   ├── power_stress.py, fpga_stress.py
-│   │   └── thresholds.py  # Threshold configurations
+│   │   └── thresholds.py  # Dynamic threshold loading
+│   ├── utils/           # Utility functions
+│   │   └── system_info.py # Server SN/model auto-detection
 │   └── cli/             # Command-line interface
 ├── config/
 │   ├── server_types/    # Server-specific configs
 │   └── global.yaml      # Global settings
 ├── templates/           # Jinja2 HTML templates
-├── tests/               # 576+ unit tests
+├── tests/               # 584+ unit tests
 │   ├── test_detectors/  # 177 detector tests
 │   ├── test_stress/     # 333 stress test tests
-│   ├── test_core/       # Core engine tests
+│   ├── test_core/       # Core engine and scheduler tests
 │   ├── test_reporters/  # Reporter tests
-│   └── test_functional/ # Functional tests
+│   ├── test_functional/ # Functional tests
+│   └── test_utils/      # Utility function tests
 └── docs/                # Documentation
 ```
 
@@ -173,7 +218,7 @@ stress_tests:
 ## Testing
 
 ```bash
-# Run all tests (576+ tests across all categories)
+# Run all tests (584+ tests across all categories)
 pytest
 
 # Run with coverage
@@ -183,8 +228,9 @@ pytest --cov=src
 pytest tests/test_detectors/      # 177 hardware detection tests
 pytest tests/test_stress/         # 333 stress test tests
 pytest tests/test_reporters/      # Reporter tests
-pytest tests/test_core/           # Core engine tests
+pytest tests/test_core/           # Core engine and scheduler tests
 pytest tests/test_functional/     # Functional tests
+pytest tests/test_utils/          # System info utility tests
 ```
 
 ## API Documentation (Server Mode)
@@ -215,6 +261,10 @@ Full support for Chinese domestic hardware:
 - Multi-server management via central server
 - Threshold-based pass/fail determination
 - Comprehensive error handling and logging
+- Signal-based detector timeout enforcement
+- Automatic server identification via DMI/BIOS
+- Grouped execution for optimal resource usage
+- EMS integration for automated reporting
 
 ## Development
 
